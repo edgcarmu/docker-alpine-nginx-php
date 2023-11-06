@@ -7,17 +7,17 @@ LABEL Description="Lightweight container with Nginx 1.18 & PHP 7.4 based on Alpi
 # Setup document root
 WORKDIR /var/www/html
 
-# Install packages
-RUN apk --no-cache add \
+# Install packages and remove default server definition
+RUN apk add --no-cache \
     curl \
-    nginx \
-    supervisor \
     yarn \
+    nginx \
     php81 \
-    php81-fpm \
+    php81-dev \
     php81-ctype \
     php81-curl \
     php81-dom \
+    php81-fpm \
     php81-gd \
     php81-intl \
     php81-mbstring \
@@ -32,6 +32,7 @@ RUN apk --no-cache add \
     php81-simplexml \
     php81-json \
     php81-zlib \
+    php81-intl \
     php81-sysvshm \
     php81-sysvsem \
     php81-sysvmsg \
@@ -65,9 +66,10 @@ RUN apk --no-cache add \
     php81-mysqlnd \
     php81-fileinfo \
     php81-pecl-memcached \
-    php81-pecl-msgpack
+    php81-pecl-msgpack \
+    supervisor
 
-# Configure nginx
+# Configure nginx - http
 COPY config/nginx.conf /etc/nginx/nginx.conf
 # Configure nginx - default server
 COPY config/conf.d /etc/nginx/conf.d/
@@ -78,6 +80,9 @@ COPY config/php.ini /etc/php81/conf.d/custom.ini
 
 # Configure supervisord
 COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Make sure files/folders needed by the processes are accessable when they run under the nobody user
+RUN chown -R nobody.nobody /var/www/html /run /var/lib/nginx /var/log/nginx
 
 # Switch to use a non-root user from here on
 USER nobody
