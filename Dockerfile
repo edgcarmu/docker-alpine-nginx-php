@@ -4,14 +4,15 @@ FROM alpine:${ALPINE_VERSION}
 LABEL Maintainer="Fabian Carvajal <inbox@edgcarmu.me>"
 LABEL Description="Lightweight container with Nginx & PHP 8.1 based on Alpine Linux."
 
+# Set environment variables for the 'nobody' user's home directory, npm cache, and node_modules
 ENV HOME=/home/nobody
 ENV NPM_CACHE=${HOME}/.npm
 ENV NODE_MODULES=${HOME}/node_modules
 
-# Setup document root
+# Set the working directory to the document root
 WORKDIR /var/www/html
 
-# Install packages and remove default server definition
+# Install required packages, including Nginx, Supervisor, Node.js, npm, PHP, and PHP extensions
 RUN apk add --no-cache \
     curl \
     nginx \
@@ -73,43 +74,44 @@ RUN apk add --no-cache \
     php81-zip \
     php81-zlib
 
-# Installing composer
+# Install Composer globally
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Configure nginx
+# Copy Nginx main configuration file
 COPY config/nginx.conf /etc/nginx/nginx.conf
-# Configure nginx - default server
+# Copy Nginx default server configuration
 COPY config/conf.d /etc/nginx/conf.d/
 
-# Configure PHP-FPM
+# Copy PHP-FPM pool configuration
 COPY config/fpm-pool.conf /etc/php81/php-fpm.d/www.conf
+# Copy custom PHP configuration
 COPY config/php.ini /etc/php81/conf.d/custom.ini
 
-# Configure supervisord
+# Copy Supervisor configuration
 COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Make sure files/folders needed by the processes are accessible by the nobody user
+# Ensure 'nobody' user has access to necessary files and folders
 RUN chown -R nobody:nobody /var/www/html /run /var/lib/nginx /var/log/nginx
 
-# Crear los directorios y asignar propiedad al usuario 'nobody'
+# Create directories for npm cache and node_modules and set ownership to 'nobody' user
 RUN mkdir -p ${NPM_CACHE} ${NODE_MODULES} && \
     chown -R nobody:nobody ${HOME}
 
-# Switch to use a non-root user
+# Switch to the 'nobody' user before running further commands
 USER nobody
 
-# Establecer las variables de entorno para npm para usar los directorios creados
+# Set environment variables for npm to use the created directories
 ENV NPM_CONFIG_CACHE=${NPM_CACHE}
 ENV PATH="${NODE_MODULES}/.bin:${PATH}"
 
-# Add application
+# Copy the application source code to the container and set ownership to 'nobody'
 COPY --chown=nobody src/ /var/www/html/
 
-# Expose the port nginx is reachable on
+# Expose port 8080 for Nginx
 EXPOSE 8080
 
-# Let supervisord start nginx & php-fpm
+# Use Supervisor to start Nginx and PHP-FPM
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
 
-# Configure a healthcheck
+# Set up a healthcheck to verify that Nginx is serving content
 HEALTHCHECK --timeout=10s CMD curl --silent --fail http://127.0.0.1:8080/fpm-ping
