@@ -12,7 +12,8 @@ RUN apk add --no-cache \
     curl \
     nginx \
     supervisor \
-    yarn \
+    nodejs \
+    npm \
     php81 \
     php81-bcmath \
     php81-calendar \
@@ -67,6 +68,9 @@ RUN apk add --no-cache \
     php81-xsl \
     php81-zip \
     php81-zlib
+
+# Installing composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Configure nginx
 COPY config/nginx.conf /etc/nginx/nginx.conf
