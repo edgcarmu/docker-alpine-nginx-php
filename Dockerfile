@@ -4,6 +4,10 @@ FROM alpine:${ALPINE_VERSION}
 LABEL Maintainer="Fabian Carvajal <inbox@edgcarmu.me>"
 LABEL Description="Lightweight container with Nginx & PHP 8.1 based on Alpine Linux."
 
+ENV HOME=/home/nobody
+ENV NPM_CACHE=${HOME}/.npm
+ENV NODE_MODULES=${HOME}/node_modules
+
 # Setup document root
 WORKDIR /var/www/html
 
@@ -87,8 +91,16 @@ COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 # Make sure files/folders needed by the processes are accessible by the nobody user
 RUN chown -R nobody:nobody /var/www/html /run /var/lib/nginx /var/log/nginx
 
+# Crear los directorios y asignar propiedad al usuario 'nobody'
+RUN mkdir -p ${NPM_CACHE} ${NODE_MODULES} && \
+    chown -R nobody:nobody ${HOME}
+
 # Switch to use a non-root user
 USER nobody
+
+# Establecer las variables de entorno para npm para usar los directorios creados
+ENV NPM_CONFIG_CACHE=${NPM_CACHE}
+ENV PATH="${NODE_MODULES}/.bin:${PATH}"
 
 # Add application
 COPY --chown=nobody src/ /var/www/html/
